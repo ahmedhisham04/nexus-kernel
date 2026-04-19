@@ -1965,8 +1965,9 @@ def tab_diagnostics():
                 </div>""", unsafe_allow_html=True)
         except:
             st.info("White's test available for OLS models only.")
-st.markdown('<p class="section-title">⑤ Specification Error — Ramsey RESET</p>', unsafe_allow_html=True)
-try:
+
+    st.markdown('<p class="section-title">⑤ Specification Error — Ramsey RESET</p>', unsafe_allow_html=True)
+    try:
         if model_choice == "OLS Results" and hasattr(fitted_model, 'model'):
             reset_res = reset_ramsey(fitted_model, degree=3)
             reset_f = reset_res.stat
@@ -1986,17 +1987,18 @@ try:
                 <p style="margin-top:8px;">H₀: Model has no omitted non-linear variables</p>
                 <span class="{badge_reset}">{reset_verdict}</span>
             </div>""", unsafe_allow_html=True)
-except Exception as e:
+    except Exception as e:
         st.info("Ramsey RESET test is available for standard OLS models only.")
 
-st.markdown('<p class="section-title">③ Normality Test</p>', unsafe_allow_html=True)
-jb_stat, jb_p = jarque_bera(resid)
-skew  = stats.skew(resid)
-kurt  = stats.kurtosis(resid)
-jb_verdict = "Normally distributed (H₀ not rejected)" if jb_p > 0.05 else "Non-normal residuals"
-badge_jb   = "badge-pass" if jb_p > 0.05 else "badge-warn"
-c5, c6 = st.columns(2)
-with c5:
+    st.markdown('<p class="section-title">③ Normality Test</p>', unsafe_allow_html=True)
+    jb_stat, jb_p = jarque_bera(resid)
+    skew  = stats.skew(resid)
+    kurt  = stats.kurtosis(resid)
+    jb_verdict = "Normally distributed (H₀ not rejected)" if jb_p > 0.05 else "Non-normal residuals"
+    badge_jb   = "badge-pass" if jb_p > 0.05 else "badge-warn"
+    c5, c6 = st.columns(2)
+    
+    with c5:
         st.markdown(f"""
         <div class="brutalist-card">
             <p class="section-title" style="font-size:0.82rem;">Jarque-Bera Normality Test</p>
@@ -2011,8 +2013,7 @@ with c5:
             <span class="{badge_jb}">{jb_verdict}</span>
         </div>""", unsafe_allow_html=True)
 
-with c6:
-        # Histogram with normal overlay
+    with c6:
         fig = go.Figure()
         fig.add_trace(go.Histogram(x=resid, nbinsx=25, name="Residuals",
                                     marker_color=CYAN, opacity=0.7, histnorm='probability density'))
@@ -2023,8 +2024,8 @@ with c6:
         fig.update_layout(title="Residual Histogram vs. Normal", barmode='overlay')
         st.plotly_chart(fig, use_container_width=True)
 
-st.markdown('<p class="section-title">④ Structural Stability — CUSUM</p>', unsafe_allow_html=True)
-try:
+    st.markdown('<p class="section-title">④ Structural Stability — CUSUM</p>', unsafe_allow_html=True)
+    try:
         cusum = np.cumsum(resid)
         sigma = np.std(resid)
         n_obs = len(resid)
@@ -2052,16 +2053,14 @@ try:
         fig4.update_layout(showlegend=True)
         st.plotly_chart(fig4, use_container_width=True)
 
-        # Check for breaches
         breaches = sum([1 for c, b in zip(cusum, conf_band) if abs(c) > abs(b)])
         stability = "✅ Structurally stable" if breaches < 5 else "⚠️ Potential structural break detected"
         badge_s   = "badge-pass" if breaches < 5 else "badge-warn"
         st.markdown(f'<span class="{badge_s}">{stability}</span>', unsafe_allow_html=True)
-except Exception as e:
+    except Exception as e:
         st.warning(f"CUSUM computation error: {e}")
 
-    # ── AI Diagnostic Summary ──
-try:
+    try:
         diag_summary = _interpret_diagnostics(
             dw,
             jb_p, skew, kurt,
@@ -2075,11 +2074,8 @@ try:
             <h4>⬡ AI Diagnostic Summary — Model Report Card</h4>
             {diag_summary}
         </div>""", unsafe_allow_html=True)
-except:
+    except:
         pass
-
-
-def _interpret_diagnostics(dw, jb_p, skew, kurt, bp_p, wh_p, bg_p, cusum_breaches):
     issues = []
     passes = []
 
