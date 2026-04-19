@@ -1,3 +1,7 @@
+# Add to existing statsmodels/arch imports
+from statsmodels.tsa.vector_ar.vecm import coint_johansen
+from statsmodels.stats.outliers_influence import reset_ramsey
+from arch.unitroot import PhillipsPerron
 """
 NEXUS KERNEL — Professional Time-Series Econometrics Platform
 Research by Ahmed Hisham
@@ -676,12 +680,20 @@ def run_adf(series, maxlag, regression, autolag):
     # res = (adf_stat, pvalue, usedlag, nobs, critical_values, icbest)
     return res[0], res[1], res[2], res[4]  # stat, pval, lags, crits
 
+# Replace the old run_pp function with this:
 def run_pp(series, regression):
-    # Phillips-Perron proxy via ADF with BIC
+    """True Phillips-Perron test using arch.unitroot with Newey-West standard errors."""
     try:
-        res = adfuller(series.dropna(), regression=regression, autolag='BIC')
-        return res[0], res[1], res[2], res[4]
-    except:
+        # arch.unitroot uses 'c' for constant, 'ct' for trend, 'n' for none
+        pp = PhillipsPerron(series.dropna(), trend=regression)
+        # critical values are stored in a dict-like object
+        crits = {
+            '1%': pp.critical_values.get('1%', 0),
+            '5%': pp.critical_values.get('5%', 0),
+            '10%': pp.critical_values.get('10%', 0)
+        }
+        return pp.stat, pp.pvalue, pp.lags, crits
+    except Exception as e:
         return None, None, None, {}
 
 def tab_stationarity():
@@ -942,7 +954,12 @@ def _est_ols(df, cols):
         data = df[[dep_var] + indep_vars].dropna().copy()
         for col in log_transform:
             if col in data.columns:
-                data[col] = np.log(data[col].replace(0, np.nan)).dropna()
+                # Safe log transform: filter out non-positive values to prevent -inf/NaN crashes
+                valid_mask = data[col] > 0
+                if not valid_mask.all():
+                    st.warning(f"⚠️ Variable '{col}' contains zero or negative values. These observations were dropped for log transformation.")
+                data = data[valid_mask]
+                data[col] = np.log(data[col])
         data = data.dropna()
 
         Y = data[dep_var]
@@ -1392,24 +1409,69 @@ def _interpret_var(fitted, endog, lag):
 
 # ── VECM ──────────────────────────────────────────────────────────────────────
 def _est_vecm(df, cols):
-    st.markdown('<p class="section-title">VECM Configuration</p>', unsafe_allow_html=True)
+    st.markdown('<p class="section-title">VECM Configuration & Johansen Test</p>', unsafe_allow_html=True)
     endog_vars = st.multiselect("Endogenous Variables (I(1) series required)", cols)
     c1, c2, c3 = st.columns(3)
     with c1:
         k_ar_diff = st.slider("Lags in Differences (k)", 1, 8, 2)
     with c2:
-        coint_rank = st.slider("Cointegration Rank (r)", 1, 4, 1)
-    with c3:
-        det_order  = st.selectbox("Deterministics", ["ci", "li", "n"], index=0)
-
-    if st.button("▶  ESTIMATE VECM", use_container_width=True):
+        det_order  = st.selectbox("Deterministics", ["ci (Const in CE)", "li (Trend in CE)", "nc (No Const)"], index=0)
+        det_map = {"ci (Const in CE)": -1, "li (Trend in CE)": 0, "nc (No Const)": -1} 
+    
+    if st.button("▶  RUN JOHANSEN TEST & ESTIMATE VECM", use_container_width=True):
         if len(endog_vars) < 2:
             st.error("Select at least 2 variables.")
             return
         try:
             data = df[endog_vars].dropna()
-            vecm_model = VECM(data, k_ar_diff=k_ar_diff, coint_rank=coint_rank, deterministic=det_order)
-            fitted     = vecm_model.fit()
+            
+            # ── 1. Johansen Cointegration Test ──
+            with st.spinner("Running Johansen Cointegration Test..."):
+                j_res = coint_johansen(data, det_order=det_map[det_order], k_ar_diff=k_ar_diff)
+                
+                trace_stat = j_res.lr1
+                max_eig = j_res.lr2
+                cv_trace = j_res.cvt[:, 1]  # 5% critical values for trace
+                
+                # Calculate suggested rank based on Trace statistic at 5% level
+                coint_rank = sum(trace_stat > cv_trace)
+                
+            st.markdown('<p class="section-title">Johansen Cointegration Test (Trace)</p>', unsafe_allow_html=True)
+            
+            trace_rows = ""
+            for i in range(len(trace_stat)):
+                sig_cls = "sig" if trace_stat[i] > cv_trace[i] else "insig"
+                trace_rows += f"""
+                <tr>
+                    <td style="font-family:'Space Mono',monospace;">r ≤ {i}</td>
+                    <td class="{sig_cls}">{fmt(trace_stat[i])}</td>
+                    <td>{fmt(j_res.cvt[i, 0])}</td>
+                    <td>{fmt(j_res.cvt[i, 1])}</td>
+                    <td>{fmt(j_res.cvt[i, 2])}</td>
+                </tr>"""
+                
+            rank_badge = "badge-pass" if coint_rank > 0 else "badge-fail"
+            st.markdown(f"""
+            <div class="brutalist-card">
+                <table class="coef-table">
+                    <tr><th>Null Hypothesis</th><th>Trace Statistic</th><th>Crit 10%</th><th>Crit 5%</th><th>Crit 1%</th></tr>
+                    {trace_rows}
+                </table>
+                <p style="margin-top:10px;font-family:'Space Mono',monospace;font-size:0.85rem;">
+                   Suggested Cointegration Rank (r) at 5% level: <span class="{rank_badge}">{coint_rank}</span>
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+
+            if coint_rank == 0:
+                st.warning("⚠️ No cointegration detected. A VAR model in first differences is econometrically recommended over a VECM. Proceeding with r=1 for demonstration purposes only.")
+                coint_rank = 1
+
+            # ── 2. VECM Estimation ──
+            st.markdown('<p class="section-title">VECM Estimation</p>', unsafe_allow_html=True)
+            det_vecm_map = {"ci (Const in CE)": "ci", "li (Trend in CE)": "li", "nc (No Const)": "nc"}
+            vecm_model = VECM(data, k_ar_diff=k_ar_diff, coint_rank=coint_rank, deterministic=det_vecm_map[det_order])
+            fitted = vecm_model.fit()
 
             st.markdown(f"""
             <div class="eq-block">
@@ -1417,16 +1479,14 @@ def _est_vecm(df, cols):
                 <p style="color:#F59E0B;margin:4px 0 0;">
                    ΔY(t) = αβᵀY(t-1) + Γ₁ΔY(t-1) + ... + Γ{k_ar_diff}ΔY(t-{k_ar_diff}) + ε(t)
                 </p>
-                <p style="font-size:0.72rem;color:#64748B;margin-top:4px;">
-                   α = loading/adjustment matrix | β = cointegrating vector(s) | r = {coint_rank}</p>
             </div>""", unsafe_allow_html=True)
 
-            st.markdown('<p class="section-title">Cointegrating Vector(s) β</p>', unsafe_allow_html=True)
+            st.markdown('<p class="section-title">Cointegrating Vector(s) β (Normalized)</p>', unsafe_allow_html=True)
             beta_df = pd.DataFrame(fitted.beta, index=endog_vars[:len(fitted.beta)],
                                     columns=[f"CI Vector {i+1}" for i in range(coint_rank)])
             st.dataframe(beta_df.style.format("{:.6f}"), use_container_width=True)
 
-            st.markdown('<p class="section-title">Adjustment Coefficients α</p>', unsafe_allow_html=True)
+            st.markdown('<p class="section-title">Adjustment Coefficients α (Loadings)</p>', unsafe_allow_html=True)
             alpha_df = pd.DataFrame(fitted.alpha, index=endog_vars[:len(fitted.alpha)],
                                      columns=[f"CI Vector {i+1}" for i in range(coint_rank)])
             st.dataframe(alpha_df.style.format("{:.6f}"), use_container_width=True)
@@ -1905,7 +1965,30 @@ def tab_diagnostics():
                 </div>""", unsafe_allow_html=True)
         except:
             st.info("White's test available for OLS models only.")
-
+st.markdown('<p class="section-title">⑤ Specification Error — Ramsey RESET</p>', unsafe_allow_html=True)
+    try:
+        if model_choice == "OLS Results" and hasattr(fitted_model, 'model'):
+            # Perform RESET test using 2nd and 3rd powers of fitted values
+            reset_res = reset_ramsey(fitted_model, degree=3)
+            reset_f = reset_res.stat
+            reset_p = reset_res.pvalue
+            
+            reset_verdict = "No specification error (H₀ not rejected)" if reset_p > 0.05 else "Specification error detected (non-linear terms needed)"
+            badge_reset   = "badge-pass" if reset_p > 0.05 else "badge-fail"
+            
+            st.markdown(f"""
+            <div class="brutalist-card">
+                <p class="section-title" style="font-size:0.82rem;">Ramsey RESET Test</p>
+                <table class="coef-table">
+                    <tr><th>Statistic</th><th>Value</th></tr>
+                    <tr><td>F-Statistic</td><td>{fmt(reset_f)}</td></tr>
+                    <tr><td>p-value</td><td>{fmt(reset_p)}</td></tr>
+                </table>
+                <p style="margin-top:8px;">H₀: Model has no omitted non-linear variables</p>
+                <span class="{badge_reset}">{reset_verdict}</span>
+            </div>""", unsafe_allow_html=True)
+    except Exception as e:
+        st.info("Ramsey RESET test is available for standard OLS models only.")
     st.markdown('<p class="section-title">③ Normality Test</p>', unsafe_allow_html=True)
     jb_stat, jb_p = jarque_bera(resid)
     skew  = stats.skew(resid)
