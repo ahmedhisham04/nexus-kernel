@@ -2023,7 +2023,7 @@ with c6:
         fig.update_layout(title="Residual Histogram vs. Normal", barmode='overlay')
         st.plotly_chart(fig, use_container_width=True)
 
-    st.markdown('<p class="section-title">④ Structural Stability — CUSUM</p>', unsafe_allow_html=True)
+st.markdown('<p class="section-title">④ Structural Stability — CUSUM</p>', unsafe_allow_html=True)
     try:
         cusum = np.cumsum(resid)
         sigma = np.std(resid)
