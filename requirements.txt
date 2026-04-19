@@ -1,0 +1,10 @@
+streamlit
+pandas
+numpy
+statsmodels
+scipy
+arch
+pmdarima
+plotly
+reportlab
+openpyxl
