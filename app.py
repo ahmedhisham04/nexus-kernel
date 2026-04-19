@@ -1996,7 +1996,7 @@ kurt  = stats.kurtosis(resid)
 jb_verdict = "Normally distributed (H₀ not rejected)" if jb_p > 0.05 else "Non-normal residuals"
 badge_jb   = "badge-pass" if jb_p > 0.05 else "badge-warn"
 c5, c6 = st.columns(2)
-    with c5:
+with c5:
         st.markdown(f"""
         <div class="brutalist-card">
             <p class="section-title" style="font-size:0.82rem;">Jarque-Bera Normality Test</p>
