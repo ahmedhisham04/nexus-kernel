@@ -2057,7 +2057,7 @@ try:
         stability = "✅ Structurally stable" if breaches < 5 else "⚠️ Potential structural break detected"
         badge_s   = "badge-pass" if breaches < 5 else "badge-warn"
         st.markdown(f'<span class="{badge_s}">{stability}</span>', unsafe_allow_html=True)
-    except Exception as e:
+except Exception as e:
         st.warning(f"CUSUM computation error: {e}")
 
     # ── AI Diagnostic Summary ──
