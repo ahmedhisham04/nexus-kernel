@@ -1990,12 +1990,12 @@ except Exception as e:
         st.info("Ramsey RESET test is available for standard OLS models only.")
 
 st.markdown('<p class="section-title">③ Normality Test</p>', unsafe_allow_html=True)
-    jb_stat, jb_p = jarque_bera(resid)
-    skew  = stats.skew(resid)
-    kurt  = stats.kurtosis(resid)
-    jb_verdict = "Normally distributed (H₀ not rejected)" if jb_p > 0.05 else "Non-normal residuals"
-    badge_jb   = "badge-pass" if jb_p > 0.05 else "badge-warn"
-    c5, c6 = st.columns(2)
+jb_stat, jb_p = jarque_bera(resid)
+skew  = stats.skew(resid)
+kurt  = stats.kurtosis(resid)
+jb_verdict = "Normally distributed (H₀ not rejected)" if jb_p > 0.05 else "Non-normal residuals"
+badge_jb   = "badge-pass" if jb_p > 0.05 else "badge-warn"
+c5, c6 = st.columns(2)
     with c5:
         st.markdown(f"""
         <div class="brutalist-card">
