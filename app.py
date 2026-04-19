@@ -2025,74 +2025,44 @@ def _interpret_vecm(model, endog, r):
 # ─────────────────────────────────────────────────────────────────────────────
 # PAGE: GARCH / VOLATILITY
 # ─────────────────────────────────────────────────────────────────────────────
-def page_garch():
-    st.markdown("""
-    <p class="page-title">🌊 GARCH / Volatility Models</p>
-    <p class="page-desc">GARCH(1,1) · EGARCH (asymmetric leverage) · TGARCH (threshold) ·
-    Conditional volatility charts · News impact curves</p>
+# ─────────────────────────────────────────────────────────────────────────────
+# PLACEHOLDER FOR UNWRITTEN PAGES
+# ─────────────────────────────────────────────────────────────────────────────
+def page_under_construction():
+    st.markdown(f"""
+    <div style="text-align:center; padding: 80px 20px;">
+        <p style="font-size:3rem; margin-bottom:10px;">🚧</p>
+        <p style="font-family:'Orbitron', monospace; font-size:1.5rem; color:{C['cyan']};">MODULE AWAITING DEPLOYMENT</p>
+        <p style="color:{C['slate']};">The <strong>{st.session_state.menu.upper()}</strong> module will be pushed in the next codebase update.</p>
+    </div>
     """, unsafe_allow_html=True)
 
-    if st.session_state.clean_df is None:
-        st.info("Load data first.")
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MAIN APPLICATION ROUTER
+# ─────────────────────────────────────────────────────────────────────────────
+def main():
+    if not st.session_state.authenticated:
+        render_login()
         return
-    df   = st.session_state.clean_df
-    cols = df.select_dtypes(include=np.number).columns.tolist()
 
-    c1,c2,c3,c4 = st.columns(4)
-    ret_var  = c1.selectbox("Return / Volatility Series", cols)
-    mdl_type = c2.selectbox("Model", ["GARCH(1,1)","EGARCH(1,1)","TGARCH(1,1)"])
-    dist     = c3.selectbox("Error Distribution", ["normal","t","skewt","ged"])
-    mean_m   = c4.selectbox("Mean Model", ["Constant","AR(1)","Zero"])
-    scale100 = st.checkbox("Scale by 100 (daily % returns)", value=True)
+    render_sidebar()
+    render_topbar()
 
-    if st.button("▶  ESTIMATE VOLATILITY MODEL", use_container_width=True):
-        try:
-            s = df[ret_var].dropna()
-            if scale100:
-                s = s * 100
-            mean_map = {"Constant":"Constant","AR(1)":"AR","Zero":"Zero"}
-            mean_lags = 1 if mean_m=="AR(1)" else 0
+    menu = st.session_state.menu
 
-            if mdl_type == "GARCH(1,1)":
-                am = arch_model(s, mean=mean_map[mean_m], lags=mean_lags,
-                                vol="Garch", p=1, q=1, dist=dist)
-            elif mdl_type == "EGARCH(1,1)":
-                am = arch_model(s, mean=mean_map[mean_m], lags=mean_lags,
-                                vol="EGARCH", p=1, q=1, dist=dist)
-            elif mdl_type == "TGARCH(1,1)":
-                am = arch_model(s, mean=mean_map[mean_m], lags=mean_lags,
-                                vol="GARCH", p=1, o=1, q=1, dist=dist)
+    # Route to the correct page function
+    if menu == "home":            page_home()
+    elif menu == "data":          page_data()
+    elif menu == "transform":     page_transform()
+    elif menu == "unitroot":      page_unitroot()
+    elif menu == "acf_pacf":      page_acf_pacf()
+    elif menu == "correlogram":   page_correlogram()
+    elif menu == "ols":           page_ols()
+    elif menu == "ardl":          page_ardl()
+    elif menu == "var":           page_var()
+    elif menu == "vecm":          page_vecm()
+    else:                         page_under_construction()
 
-            res = am.fit(disp="off", show_warning=False)
-            st.session_state.garch_res = {"model":res,"var":ret_var,"type":mdl_type,"dist":dist}
-            st.success(f"✓ {mdl_type} estimated. AIC={res.aic:.3f}")
-        except Exception as exc:
-            st.error(f"**GARCH error:** {exc}")
-
-    gr = st.session_state.garch_res
-    if gr is None: return
-
-    res  = gr["model"]
-    p    = res.params
-    mdl  = gr["type"]
-
-    # Parameter metrics
-    omega  = p.get("omega",  p.get("alpha[0]",  0))
-    alpha1 = p.get("alpha[1]", p.get("alpha",   0))
-    beta1  = p.get("beta[1]",  p.get("beta",    0))
-    gamma1 = p.get("gamma[1]", p.get("o[1]",    0))  # leverage
-    persist = alpha1 + beta1 + (0.5*abs(gamma1) if "TGARCH" in mdl or "EGARCH" in mdl else 0)
-
-    c1,c2,c3,c4,c5 = st.columns(5)
-    c1.metric("ω (base vol.)", f"{omega:.6f}")
-    c2.metric("α₁ (ARCH)",    f"{alpha1:.4f}")
-    c3.metric("β₁ (GARCH)",   f"{beta1:.4f}")
-    c4.metric("γ (Leverage)",  f"{gamma1:.4f}")
-    c5.metric("Persistence",   f"{persist:.4f}",
-              delta="Stationary" if persist<1 else "Explosive!",
-              delta_color="normal" if persist<1 else "inverse")
-
-    st.markdown("""
-    <div class="eq-block">
-      <p class="eq-muted">GARCH-family specification:</p>
-      <p>rₜ = μ + εₜ &nbsp;|&nbsp;
+if __name__ == "__main__":
+    main()
