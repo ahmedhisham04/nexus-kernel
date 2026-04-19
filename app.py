@@ -1966,7 +1966,7 @@ def tab_diagnostics():
         except:
             st.info("White's test available for OLS models only.")
 st.markdown('<p class="section-title">⑤ Specification Error — Ramsey RESET</p>', unsafe_allow_html=True)
-    try:
+try:
         if model_choice == "OLS Results" and hasattr(fitted_model, 'model'):
             reset_res = reset_ramsey(fitted_model, degree=3)
             reset_f = reset_res.stat
