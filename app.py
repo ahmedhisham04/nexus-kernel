@@ -2011,7 +2011,7 @@ with c5:
             <span class="{badge_jb}">{jb_verdict}</span>
         </div>""", unsafe_allow_html=True)
 
-    with c6:
+with c6:
         # Histogram with normal overlay
         fig = go.Figure()
         fig.add_trace(go.Histogram(x=resid, nbinsx=25, name="Residuals",
