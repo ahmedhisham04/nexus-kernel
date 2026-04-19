@@ -1037,8 +1037,7 @@ def _est_ols(df, cols):
         # ── Residual plots ──
         _residual_plots(model.resid.values, model.fittedvalues.values, dep_var)
 
-        # ── Diagnostics ──
-        _run_diagnostics(model, Y, X)
+        
 
         # ── AI interpretation ──
         ai_text = _interpret_ols(model, dep_var, indep_vars, log_transform)
@@ -1128,18 +1127,16 @@ def _est_ardl(df, cols):
             return
         try:
             data = df[[dep_var] + indep_vars].dropna()
+            # Run lag selection
             order_sel = ardl_select_order(
-                data[dep_var], max_lag_y,
-                data[indep_vars], max_lag_x,
+                data[dep_var], maxlag=max_lag_y,
+                exog=data[indep_vars], maxorder=max_lag_x,
                 ic=ic_crit, trend='c'
             )
-            best_order = order_sel.ardl_order
-
-            model = ARDL(
-                data[dep_var], best_order[0],
-                data[indep_vars], best_order[1:],
-                trend='c'
-            ).fit()
+            
+            # Extract the best lags and fit the model directly
+            best_order = order_sel.model.ardl_order
+            model = order_sel.model.fit()
 
             st.session_state.ardl_results = model
 
