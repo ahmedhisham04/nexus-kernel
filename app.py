@@ -1987,7 +1987,7 @@ try:
                 <p style="margin-top:8px;">H₀: Model has no omitted non-linear variables</p>
                 <span class="{badge_reset}">{reset_verdict}</span>
             </div>""", unsafe_allow_html=True)
-    except Exception as e:
+except Exception as e:
         st.info("Ramsey RESET test is available for standard OLS models only.")
     st.markdown('<p class="section-title">③ Normality Test</p>', unsafe_allow_html=True)
     jb_stat, jb_p = jarque_bera(resid)
