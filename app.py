@@ -2024,7 +2024,7 @@ with c6:
         st.plotly_chart(fig, use_container_width=True)
 
 st.markdown('<p class="section-title">④ Structural Stability — CUSUM</p>', unsafe_allow_html=True)
-    try:
+try:
         cusum = np.cumsum(resid)
         sigma = np.std(resid)
         n_obs = len(resid)
