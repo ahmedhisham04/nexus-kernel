@@ -1989,7 +1989,7 @@ try:
 except Exception as e:
         st.info("Ramsey RESET test is available for standard OLS models only.")
 
-    st.markdown('<p class="section-title">③ Normality Test</p>', unsafe_allow_html=True)
+st.markdown('<p class="section-title">③ Normality Test</p>', unsafe_allow_html=True)
     jb_stat, jb_p = jarque_bera(resid)
     skew  = stats.skew(resid)
     kurt  = stats.kurtosis(resid)
