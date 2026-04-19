@@ -2061,7 +2061,7 @@ except Exception as e:
         st.warning(f"CUSUM computation error: {e}")
 
     # ── AI Diagnostic Summary ──
-    try:
+try:
         diag_summary = _interpret_diagnostics(
             dw,
             jb_p, skew, kurt,
@@ -2075,7 +2075,7 @@ except Exception as e:
             <h4>⬡ AI Diagnostic Summary — Model Report Card</h4>
             {diag_summary}
         </div>""", unsafe_allow_html=True)
-    except:
+except:
         pass
 
 
